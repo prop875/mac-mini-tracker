@@ -9,12 +9,26 @@ RSS_URL = os.environ["RSS_URL"].strip()
 NTFY_TOPIC = os.environ["NTFY_TOPIC"].strip()
 SEEN_FILE = Path("seen.json")
 
-# Matches Mac mini with 24GB memory and 512GB storage
 REQUIRED_PATTERNS = [
     r"mac\s*mini",
-    # r"\b24\s*gb\b",
-    # r"\b512\s*gb\b",
+    r"\b24\s*gb\b",
+    r"\b512\s*gb\b",
 ]
+
+
+def local_name(tag):
+    return tag.split("}", 1)[-1].lower()
+
+
+def child_text(elem, *names):
+    for child in elem:
+        if local_name(child.tag) in names:
+            if child.text and child.text.strip():
+                return child.text.strip()
+            if "href" in child.attrib:
+                return child.attrib["href"].strip()
+    return ""
+
 
 seen = json.loads(SEEN_FILE.read_text()) if SEEN_FILE.exists() else []
 seen_set = set(seen)
@@ -23,12 +37,17 @@ req = urllib.request.Request(RSS_URL, headers={"User-Agent": "Mozilla/5.0"})
 with urllib.request.urlopen(req, timeout=20) as resp:
     root = ET.fromstring(resp.read())
 
+entries = [e for e in root.iter() if local_name(e.tag) in ("item", "entry")]
+print(f"Feed root: {local_name(root.tag)} | Entries found: {len(entries)}")
+
 new_items = []
-for item in root.findall(".//item"):
-    title = (item.findtext("title") or "Refurbished Mac mini").strip()
-    desc = (item.findtext("description") or "").strip()
-    link = (item.findtext("link") or "").strip()
-    item_id = (item.findtext("guid") or link or title).strip()
+for entry in entries:
+    title = child_text(entry, "title") or "Refurbished Mac mini"
+    desc = child_text(entry, "description", "summary", "content")
+    link = child_text(entry, "link")
+    item_id = child_text(entry, "guid", "id") or link or title
+
+    print(f"- {title}")
 
     full_text = f"{title} {desc}"
     if item_id in seen_set:
