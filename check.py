@@ -1,12 +1,13 @@
 import json
 import os
 import re
+import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 RSS_URL = os.environ["RSS_URL"].strip()
-NTFY_TOPIC = os.environ["NTFY_TOPIC"].strip()
+NTFY_TOPIC = os.environ["NTFY_TOPIC"].strip().rstrip("/").split("/")[-1]
 SEEN_FILE = Path("seen.json")
 
 REQUIRED_PATTERNS = [
@@ -61,7 +62,7 @@ for item_id, title, link in new_items:
         "Priority": "high",
         "Tags": "computer",
     }
-    if link:
+    if link.startswith(("http://", "https://")):
         headers["Click"] = link
     push = urllib.request.Request(
         f"https://ntfy.sh/{NTFY_TOPIC}",
@@ -69,8 +70,12 @@ for item_id, title, link in new_items:
         headers=headers,
         method="POST",
     )
-    with urllib.request.urlopen(push, timeout=15):
-        pass
+    try:
+        with urllib.request.urlopen(push, timeout=15):
+            pass
+    except urllib.error.HTTPError as e:
+        print(f"ntfy error {e.code}: {e.read().decode('utf-8', errors='replace')}")
+        raise
     seen.append(item_id)
 
 if new_items:
