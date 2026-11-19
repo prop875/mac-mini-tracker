@@ -1,0 +1,32 @@
+name: Refurb Mac mini Check
+
+on:
+  schedule:
+    - cron: "3,13,23,33,43,53 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check RSS feed
+        env:
+          RSS_URL: ${{ secrets.RSS_URL }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: python check.py
+      - name: Save seen items
+        run: |
+          if [ -n "$(git status --porcelain seen.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add seen.json
+            git commit -m "Update seen refurb items"
+            git push
+          fi
