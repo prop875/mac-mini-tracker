@@ -12,8 +12,8 @@ SEEN_FILE = Path("seen.json")
 # Matches Mac mini with 24GB memory and 512GB storage
 REQUIRED_PATTERNS = [
     r"mac\s*mini",
-#    r"\b24\s*gb\b",
-#    r"\b512\s*gb\b",
+    # r"\b24\s*gb\b",
+    # r"\b512\s*gb\b",
 ]
 
 seen = json.loads(SEEN_FILE.read_text()) if SEEN_FILE.exists() else []
